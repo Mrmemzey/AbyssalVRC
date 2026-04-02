@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AbyssalVRC</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080810;
+    --bg2: #0d0d1a;
+    --bg3: #111124;
+    --purple-dark: #1a0a2e;
+    --purple-mid: #3d1a6e;
+    --purple-bright: #7b2fff;
+    --purple-glow: #9b5fff;
+    --red: #cc2020;
+    --red-bright: #ff3333;
+    --red-dim: #8b0000;
+    --text: #e8e0f0;
+    --text-dim: #8877aa;
+    --border: rgba(123, 47, 255, 0.25);
+    --border-red: rgba(204, 32, 32, 0.4);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Cinzel Decorative', serif;
+    --body: 'Crimson Pro', Georgia, serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.6;
+    cursor: crosshair;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Noise grain */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 998;
+    opacity: 0.6;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 3rem;
+    background: rgba(8,8,16,0.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-logo {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--purple-bright);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 20px rgba(123,47,255,0.6);
+    transition: text-shadow 0.3s, color 0.3s;
+  }
+
+  .nav-logo:hover {
+    color: var(--purple-glow);
+    text-shadow: 0 0 30px rgba(155,95,255,0.9), 0 0 60px rgba(123,47,255,0.4);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    position: relative;
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 1px;
+    background: var(--purple-bright);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--purple-glow); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 60%, rgba(61,26,110,0.35) 0%, transparent 70%),
+      radial-gradient(ellipse 30% 25% at 20% 80%, rgba(139,0,0,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 20% 20% at 80% 20%, rgba(123,47,255,0.12) 0%, transparent 60%);
+  }
+
+  /* Animated glitch lines */
+  .hero-lines {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0.15;
+  }
+
+  .hero-lines::before, .hero-lines::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--purple-bright), transparent);
+    animation: scan 8s linear infinite;
+  }
+
+  .hero-lines::after {
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    animation-delay: -4s;
+    animation-duration: 11s;
+  }
+
+  @keyframes scan {
+    0% { top: -1px; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.3em;
+    color: var(--red-bright);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .hero-title {
+    font-family: var(--display);
+    font-size: clamp(2.8rem, 8vw, 6.5rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: #fff;
+    position: relative;
+    animation: fadeUp 0.8s 0.15s ease both;
+  }
+
+  .hero-title span {
+    color: var(--purple-bright);
+    display: inline-block;
+    position: relative;
+  }
+
+  /* Glitch effect on hover */
+  .hero-title:hover span {
+    animation: glitch 0.3s steps(2) infinite;
+  }
+
+  @keyframes glitch {
+    0% { text-shadow: -2px 0 var(--red), 2px 0 var(--purple-bright); clip-path: inset(0 0 80% 0); }
+    25% { text-shadow: 2px 0 var(--red), -2px 0 var(--purple-bright); clip-path: inset(40% 0 40% 0); }
+    50% { text-shadow: -2px 0 var(--purple-bright), 2px 0 var(--red); clip-path: inset(70% 0 0 0); }
+    75% { text-shadow: 0; clip-path: none; }
+    100% { text-shadow: -2px 0 var(--red); clip-path: inset(10% 0 60% 0); }
+  }
+
+  .hero-sub {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: 1.25rem;
+    color: var(--text-dim);
+    margin-top: 1.5rem;
+    max-width: 500px;
+    text-align: center;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+
+  .hero-divider {
+    width: 80px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--purple-bright), transparent);
+    margin: 2rem auto;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+    animation: fadeUp 0.8s 0.5s ease both;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hero-stat {
+    text-align: center;
+  }
+
+  .hero-stat-num {
+    font-family: var(--mono);
+    font-size: 2rem;
+    color: var(--purple-glow);
+    display: block;
+  }
+
+  .hero-stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTIONS */
+  .section {
+    padding: 6rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .section-title.red { color: var(--red-bright); }
+  .section-title.purple { color: var(--purple-glow); }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+  }
+
+  .section-line.red { background: linear-gradient(90deg, var(--border-red), transparent); }
+  .section-line.purple { background: linear-gradient(90deg, var(--border), transparent); }
+
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border: 1px solid;
+    border-radius: 2px;
+  }
+
+  .section-tag.red { color: var(--red-bright); border-color: var(--red-dim); }
+  .section-tag.purple { color: var(--purple-bright); border-color: var(--purple-mid); }
+
+  /* MEMBERS GRID */
+  .members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.2rem;
+  }
+
+  .member-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--purple-bright);
+    padding: 1.2rem 1.4rem;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.25s, box-shadow 0.25s;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  }
+
+  .member-card:hover {
+    background: var(--bg3);
+    border-color: var(--purple-glow);
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 12px 40px rgba(123,47,255,0.35), 0 0 0 1px rgba(123,47,255,0.2), inset 0 0 20px rgba(123,47,255,0.05);
+  }
+
+  .member-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 0 12px 12px 0;
+    border-color: transparent var(--bg) transparent transparent;
+  }
+
+  .member-rank {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--purple-bright);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .member-name {
+    font-family: var(--display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+
+  .member-bio {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .member-badge {
+    display: inline-block;
+    margin-top: 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border: 1px solid var(--purple-mid);
+    color: var(--purple-glow);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: background 0.25s, color 0.25s, border-color 0.25s;
+  }
+
+  .member-card:hover .member-badge {
+    background: var(--purple-mid);
+    color: #fff;
+    border-color: var(--purple-bright);
+  }
+
+  /* TARGETS */
+  .targets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.8rem;
+  }
+
+  .target-card {
+    background: rgba(139,0,0,0.08);
+    border: 1px solid var(--border-red);
+    border-left: 3px solid var(--red);
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: background 0.25s, transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  }
+
+  .target-card:hover {
+    background: rgba(139,0,0,0.22);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 10px 32px rgba(204,32,32,0.3), 0 0 0 1px rgba(204,32,32,0.15), inset 0 0 16px rgba(204,32,32,0.05);
+    border-color: var(--red-bright);
+  }
+
+  .target-username {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    word-break: break-all;
+  }
+
+  .target-reason {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  footer span { color: var(--purple-bright); }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+    <a class="nav-logo" href="#">AbyssalVRC</a>
+    <canvas id="vizCanvas" width="160" height="24" style="display:block;opacity:0.85;"></canvas>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#members">Members</a></li>
+    <li><a href="#targets">Targets</a></li>
+    <li><a href="#group-targets">Groups</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-lines"></div>
+  <div style="position:relative;z-index:1;text-align:center;display:flex;flex-direction:column;align-items:center;">
+    <p class="hero-eyebrow">Est. 2020 &nbsp;///&nbsp; Anti VRC</p>
+    <h1 class="hero-title">Abyssal<span>VRC</span></h1>
+    <p class="hero-sub">Escape the headset. Reclaim the Abyss.</p>
+    <div class="hero-divider"></div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num">2</span>
+        <span class="hero-stat-label">Members</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">31</span>
+        <span class="hero-stat-label">Targets</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">∞</span>
+        <span class="hero-stat-label">Chaos</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMBERS -->
+<div id="members" style="background: linear-gradient(180deg, transparent, rgba(61,26,110,0.08), transparent);">
+<div class="section">
+  <div class="section-header">
+    <span class="section-tag purple">Roster</span>
+    <h2 class="section-title purple">Members</h2>
+    <div class="section-line purple"></div>
+  </div>
+
+  <div class="members-grid">
+
+    <div class="member-card fade-in">
+      <p class="member-rank">Founder</p>
+      <p class="member-name">hdza</p>
+      <span class="member-badge">Admin</span>
+    </div>
+
+    <div class="member-card fade-in">
+      <p class="member-rank">Co-Founder</p>
+      <p class="member-name">French</p>
+      <span class="member-badge">Admin</span>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- TARGETS -->
+<div id="targets" style="background: linear-gradient(180deg, transparent, rgba(139,0,0,0.06), transparent);">
+<div class="section">
+  <div class="section-header">
+    <span class="section-tag red">Watch List</span>
+    <h2 class="section-title red">Targets</h2>
+    <div class="section-line red"></div>
+  </div>
+
+  <p style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 2rem;">// IN-GAME USERNAMES — UPDATED REGULARLY</p>
+
+  <div class="targets-grid">
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">xX_NightmareKing_Xx</p>
+        <p class="target-reason">Drama instigator</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">QuantumFox3D</p>
+        <p class="target-reason">World crasher</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">ToxicPuppet99</p>
+        <p class="target-reason">Mic spammer</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">GrimReaper_lol</p>
+        <p class="target-reason">Persistent troll</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">SkeleBoyVR</p>
+        <p class="target-reason">Avatar crasher</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">void_entity_0</p>
+        <p class="target-reason">Serial griefer</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">PlagueDocVR</p>
+        <p class="target-reason">Spawn camper</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">MirrorKnight_77</p>
+        <p class="target-reason">Impersonator</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">Duskraven404</p>
+        <p class="target-reason">Drama bringer</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">RiftJester</p>
+        <p class="target-reason">Mic screamer</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">CelestialGremlin</p>
+        <p class="target-reason">Lobby ruiner</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">NullbornSpy</p>
+        <p class="target-reason">Stalker behavior</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">EchoVex</p>
+        <p class="target-reason">Obsessive ranter</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">FrostByte_VR</p>
+        <p class="target-reason">Crash exploits</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">HexWarden</p>
+        <p class="target-reason">Infiltrator</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      
+      <div>
+        <p class="target-username">LiminalGhoul</p>
+        <p class="target-reason">Earrape audio</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- GROUP TARGETS -->
+<div id="group-targets" style="background: linear-gradient(180deg, transparent, rgba(100,0,0,0.08), transparent);">
+<div class="section">
+  <div class="section-header">
+    <span class="section-tag red">Blacklist</span>
+    <h2 class="section-title red">Targeted Groups</h2>
+    <div class="section-line red"></div>
+  </div>
+
+  <p style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 2rem;">// VRCHAT GROUPS — NO MERCY</p>
+
+  <div class="targets-grid">
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">The Hollow Throne</p>
+        <p class="target-reason">Toxic leadership</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Neon Wraith Collective</p>
+        <p class="target-reason">Mass griefing squad</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Rift Syndicate</p>
+        <p class="target-reason">Coordinated crashers</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Obsidian Cult VRC</p>
+        <p class="target-reason">Harassment campaigns</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Static Legion</p>
+        <p class="target-reason">Drama exporters</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Phantom Protocol</p>
+        <p class="target-reason">Exploit runners</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">VoidBreaker Alliance</p>
+        <p class="target-reason">Known infiltrators</p>
+      </div>
+    </div>
+
+    <div class="target-card fade-in">
+      <div class="target-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <p class="target-username">Crimson Aegis</p>
+        <p class="target-reason">Hostile world hosts</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<footer>
+  <p><span>AbyssalVRC</span> &nbsp;//&nbsp; From the depths &nbsp;//&nbsp; Anti VRC &nbsp;//&nbsp; <span>2020</span></p>
+</footer>
+
+<div id="musicHint" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:200;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);border:1px solid var(--border);padding:8px 14px;background:rgba(8,8,16,0.85);backdrop-filter:blur(8px);animation:hintPulse 2s ease-in-out infinite;pointer-events:none;">
+  ▶ click anywhere to start music
+</div>
+
+<style>
+  @keyframes hintPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+</style>
+
+<audio id="bgAudio" loop src="IF_YOU_WANT_IT_BAD_ENOUGH_320K.mp3"></audio>
+
+<script>
+  const audio = document.getElementById('bgAudio');
+  audio.volume = 0.15;
+
+  const canvas = document.getElementById('vizCanvas');
+  const ctx2d = canvas.getContext('2d');
+
+  function drawFakeViz() {
+    requestAnimationFrame(drawFakeViz);
+    ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+    const bars = 28, barW = 4, gap = 2;
+    const startX = (canvas.width - bars * (barW + gap)) / 2;
+    const t = Date.now() / 1000;
+    for (let i = 0; i < bars; i++) {
+      const val = (Math.sin(t * 2 + i * 0.4) * 0.3 + Math.sin(t * 3.7 + i * 0.7) * 0.2 + 0.5) * 0.8;
+      const h = Math.max(2, val * canvas.height);
+      const x = startX + i * (barW + gap);
+      const y = (canvas.height - h) / 2;
+      const grad = ctx2d.createLinearGradient(0, y, 0, y + h);
+      grad.addColorStop(0, 'rgba(204,32,32,0.9)');
+      grad.addColorStop(1, 'rgba(123,47,255,0.9)');
+      ctx2d.fillStyle = grad;
+      ctx2d.beginPath();
+      ctx2d.roundRect(x, y, barW, h, 1);
+      ctx2d.fill();
+    }
+  }
+
+  document.addEventListener('click', async () => {
+    try {
+      await audio.play();
+      drawFakeViz();
+    } catch(e) { console.warn('Audio play failed:', e); }
+    document.getElementById('musicHint').style.display = 'none';
+  }, { once: true });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 60);
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
